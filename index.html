@@ -1,4 +1,487 @@
-<body>
-  <div id="root"></div>
-  <script type="module" src="./main.jsx"></script>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing Workshop - AI 英文寫作工作坊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .serif { font-family: 'Noto Serif TC', serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        .bg-pattern { background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen transition-colors duration-700">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8">
+        <!-- Content will be injected here by JS -->
+    </div>
+
+    <script>
+        // --- 寫作架構資料庫 ---
+        const WRITING_TEMPLATES = {
+            chart: {
+                title: "圖表分析", subtitle: "Chart Analysis", theme: "emerald", color: "emerald-600",
+                icon: "bar-chart-3", hasExample: true,
+                exampleData: { type: "chart", title: "How Students Spend Time After School", items: [{label: "Studying", value: 45, color: "bg-emerald-500"}, {label: "Gaming", value: 30, color: "bg-blue-500"}, {label: "Sports", value: 15, color: "bg-amber-500"}, {label: "Others", value: 10, color: "bg-slate-400"}] },
+                steps: [
+                    { id: "hook", label: "Hook (開頭引言)", patterns: ["In recent years...", "Nowadays..."], words: ["crucial", "essential"], tip: "吸引讀者注意該數據主題。" },
+                    { id: "intro", label: "Introduce Chart", patterns: ["The chart illustrates...", "The graph shows..."], words: ["illustrates", "depicts"], tip: "使用引導句型簡介圖表內容。" },
+                    { id: "trend", label: "Overall Trend", patterns: ["Overall, it is clear that...", "What stands out is..."], words: ["dominant", "noteworthy"], tip: "找出比例最大與最小的項目。" },
+                    { id: "details", label: "Key Details", patterns: ["...accounts for X%", "compared with"], words: ["approximately", "followed by"], tip: "比較不同數據之間的差距。" },
+                    { id: "implication", label: "Implication", patterns: ["This suggests that...", "The data indicates..."], words: ["implies", "consequently"], tip: "總結數據反映出的意義。" }
+                ]
+            },
+            letter: {
+                title: "私人書信", subtitle: "Personal Letter", theme: "rose", color: "rose-600",
+                icon: "heart", hasExample: true,
+                exampleData: { type: "text", title: "Mission: Repairing a Friendship", context: "你與好友 Jamie 最近因為誤會而疏遠。請寫信道歉並修補關係。" },
+                steps: [
+                    { id: "greeting", label: "Greeting", patterns: ["Dearest [Name],", "Hey [Name],"], words: ["Dearest", "Warmly"], tip: "使用溫馨的稱呼。" },
+                    { id: "purpose", label: "Opening", patterns: ["I've been thinking a lot about...", "I'm writing to clear the air."], words: ["reflecting", "heavy heart"], tip: "坦誠地開啟話題。" },
+                    { id: "details", label: "Feelings & Apology", patterns: ["I sincerely apologize for...", "I cherish our friendship."], words: ["sincerely", "regret"], tip: "真誠道歉並解釋原因。" },
+                    { id: "expectation", label: "Expectation", patterns: ["I hope we can...", "Let's grab a coffee."], words: ["reconnect", "forgive"], tip: "提出具體的修補建議。" },
+                    { id: "closing", label: "Closing", patterns: ["Best,", "Yours always,"], words: ["Truly yours", "Best wishes"], tip: "選擇溫暖的結尾語。" }
+                ]
+            },
+            opinion: {
+                title: "意見表達", subtitle: "Opinion Writing", theme: "indigo", color: "indigo-600",
+                icon: "message-square", hasTopics: true,
+                topics: [
+                    { id: "ai", title: "AI in Classroom", desc: "應否允許在學習中使用 AI 工具？", pro: "提升效率", con: "削弱思考" },
+                    { id: "ban", title: "Smartphone Ban", desc: "學校應否全面禁止手機？", pro: "減少干擾", con: "聯絡困難" }
+                ],
+                steps: [
+                    { id: "hook", label: "Hook", patterns: ["...has sparkled heated debates.", "It is a hot topic lately."], words: ["controversial", "phenomenon"], tip: "描述議題的重要性。" },
+                    { id: "thesis", label: "Topic Sentence", patterns: ["From my perspective,", "I firmly believe that..."], words: ["standpoint", "convinced"], tip: "清楚表達你的核心立場。" },
+                    { id: "reason1", label: "First Reason", patterns: ["Firstly,", "To begin with,"], words: ["primary", "essential"], tip: "給出首要支持理由。" },
+                    { id: "reason2", label: "Second Reason", patterns: ["Furthermore,", "In addition,"], words: ["moreover", "equally important"], tip: "補充另一個支持點。" },
+                    { id: "concession", label: "Concession", patterns: ["Admittedly, ...", "While some argue that..."], words: ["nevertheless", "outweigh"], tip: "先承認對方觀點再反饋。" },
+                    { id: "conclusion", label: "Conclusion", patterns: ["In conclusion,", "To sum up,"], words: ["ultimately", "final thought"], tip: "重申立場並給予建議。" }
+                ]
+            },
+            narrative: {
+                title: "敘事寫作", subtitle: "Narrative Writing", theme: "amber", color: "amber-600",
+                icon: "camera", hasExample: true,
+                exampleData: { type: "text", title: "An Unexpected Lesson", context: "描述一次意外狀況讓你學到重要一課的經歷。" },
+                steps: [
+                    { id: "setting", label: "Setting", patterns: ["It was a sunny day when...", "I had been looking forward to..."], words: ["anticipation", "excited"], tip: "交代時間地點心情。" },
+                    { id: "conflict", label: "Conflict", patterns: ["Unexpectedly, ...", "Things took a turn when..."], words: ["suddenly", "shocked"], tip: "描述意外發生的一刻。" },
+                    { id: "climax", label: "Climax", patterns: ["I found myself in a tough spot.", "At that moment, I realized..."], words: ["desperate", "struggle"], tip: "描述最緊張的轉折。" },
+                    { id: "resolution", label: "Resolution", patterns: ["Eventually, I decided to...", "With the help of..."], words: ["relief", "resolved"], tip: "故事是如何落幕的？" },
+                    { id: "theme", label: "Lesson", patterns: ["Looking back, I learned that...", "This experience taught me..."], words: ["valuable", "insight"], tip: "帶給你的成長。" }
+                ]
+            },
+            person: { title: "人物描述", subtitle: "Descriptive: Person", theme: "cyan", color: "cyan-600", icon: "search", steps: [
+                { id: "intro", label: "Intro", patterns: ["I'd like to talk about...", "The person I admire is..."], words: ["influence", "extraordinary"], tip: "介紹身份。" },
+                { id: "appearance", label: "Appearance", patterns: ["He/She has a ... look.", "What strikes me first is..."], words: ["energetic", "distinguished"], tip: "描述外型。" },
+                { id: "personality", label: "Personality", patterns: ["He/She is known for...", "Beyond appearance..."], words: ["compassionate", "humorous"], tip: "內在特質。" },
+                { id: "example", label: "Example", patterns: ["I remember a time when...", "This shows how kind..."], words: ["dedication", "inspired"], tip: "具體事例。" },
+                { id: "impact", label: "Impact", patterns: ["He/She has taught me...", "Because of him/her..."], words: ["role model", "gratitude"], tip: "對你的影響。" }
+            ]},
+            place: { title: "地點描述", subtitle: "Descriptive: Place", theme: "lime", color: "lime-600", icon: "map", steps: [
+                { id: "intro", label: "Location", patterns: ["Located in the heart of...", "There is a hidden gem..."], words: ["destination", "situated"], tip: "說明地點位置。" },
+                { id: "senses", label: "Sensory", patterns: ["I can hear the sound of...", "The air is filled with..."], words: ["breathtaking", "vibrant"], tip: "運用五感。" },
+                { id: "activity", label: "Activity", patterns: ["Visitors can enjoy...", "One thing you must do..."], words: ["exploration", "unwind"], tip: "人們在那做什麼？" },
+                { id: "atmosphere", label: "Atmosphere", patterns: ["The place has a ... vibe.", "It feels like..."], words: ["peaceful", "bustling"], tip: "心理感受。" },
+                { id: "conclusion", label: "Summary", patterns: ["It is more than just a place...", "I highly recommend..."], words: ["unforgettable", "worthwhile"], tip: "為何值得去。" }
+            ]},
+            problem: { title: "解決問題", subtitle: "Problem & Solution", theme: "orange", color: "orange-600", icon: "help-circle", steps: [
+                { id: "problem", label: "Problem", patterns: ["One major issue we face is...", "Recently, ... has become..."], words: ["concerning", "challenge"], tip: "現狀問題。" },
+                { id: "causes", label: "Causes", patterns: ["The main reason is...", "This problem arises from..."], words: ["root cause", "contributing"], tip: "背後起因。" },
+                { id: "sol1", label: "Solution 1", patterns: ["To address this, we could...", "The first step is to..."], words: ["effective", "measure"], tip: "第一個對策。" },
+                { id: "sol2", label: "Solution 2", patterns: ["In addition, ...", "Another solution is..."], words: ["furthermore", "alternative"], tip: "補充建議。" },
+                { id: "outlook", label: "Outlook", patterns: ["By doing so, we can...", "I believe with these efforts..."], words: ["promising", "sustainable"], tip: "未來展望。" }
+            ]},
+            compare: { title: "對比比較", subtitle: "Compare & Contrast", theme: "purple", color: "purple-600", icon: "list-checks", steps: [
+                { id: "intro", label: "Subjects", patterns: ["While A and B share similarities...", "Comparing A and B reveals..."], words: ["comparison", "distinct"], tip: "對象簡介。" },
+                { id: "sim", label: "Similarities", patterns: ["Both A and B are...", "Similarly, both of them..."], words: ["likewise", "in common"], tip: "共同點。" },
+                { id: "diff", label: "Differences", patterns: ["On the contrary, ...", "Unlike A, B tends to..."], words: ["whereas", "contrast"], tip: "相異點。" },
+                { id: "pref", label: "Preference", patterns: ["As for me, I prefer A because...", "If I had to choose..."], words: ["choice", "favor"], tip: "個人偏好。" },
+                { id: "sum", label: "Final Thought", patterns: ["In short, both have pros and cons.", "Choosing between them..."], words: ["balanced", "perspective"], tip: "最終總結。" }
+            ]},
+            process: { title: "流程步驟", subtitle: "Process Writing", theme: "yellow", color: "yellow-700", icon: "pen-tool", steps: [
+                { id: "intro", label: "Objective", patterns: ["To make a perfect ..., you need...", "The process is simple."], words: ["preparation", "essential"], tip: "目標準備。" },
+                { id: "s1", label: "Step 1", patterns: ["First, you should...", "To begin with, ..."], words: ["initially", "commence"], tip: "第一個動作。" },
+                { id: "s2", label: "Steps", patterns: ["After that, ...", "The next step is..."], words: ["subsequently", "followed by"], tip: "關鍵環節。" },
+                { id: "caution", label: "Cautions", patterns: ["Be careful not to...", "It is important to..."], words: ["precautions", "critical"], tip: "注意事項。" },
+                { id: "result", label: "Result", patterns: ["Finally, you will have a...", "Now you can enjoy..."], words: ["satisfying", "accomplished"], tip: "最後狀態。" }
+            ]},
+            summary: { title: "心得摘要", subtitle: "Summary Writing", theme: "slate", color: "slate-600", icon: "history", steps: [
+                { id: "view", label: "Overview", patterns: ["The story tells us about...", "I recently read..."], words: ["summary", "content"], tip: "內容概觀。" },
+                { id: "points", label: "Main Points", patterns: ["The author emphasizes...", "The core message is..."], words: ["highlight", "central theme"], tip: "重點摘錄。" },
+                { id: "fav", label: "Favorite Part", patterns: ["What impressed me most was...", "The touching part is..."], words: ["impact", "vivid"], tip: "最難忘情節。" },
+                { id: "ref", label: "Reflection", patterns: ["I started to realize that...", "This made me think..."], words: ["insight", "realization"], tip: "個人省思。" },
+                { id: "rec", label: "Recommendation", patterns: ["I would recommend this to...", "It's a must-read."], words: ["highly suggested", "worthwhile"], tip: "推薦語。" }
+            ]},
+            diary: { title: "生活日記", subtitle: "Diary Entry", theme: "violet", color: "violet-600", icon: "coffee", steps: [
+                { id: "date", label: "Mood", patterns: ["March 15, Sunny.", "Today was a ... day."], words: ["exhausted", "delighted"], tip: "日期心情。" },
+                { id: "event", label: "Event", patterns: ["Something interesting happened.", "I spent most of my time..."], words: ["meaningful", "unforgettable"], tip: "今日大事。" },
+                { id: "feeling", label: "Emotions", patterns: ["I felt a bit ... when...", "I'm still thinking about..."], words: ["overwhelmed", "grateful"], tip: "內心情感。" },
+                { id: "grat", label: "Gratitude", patterns: ["I'm grateful for...", "One good thing today was..."], words: ["appreciation", "comfort"], tip: "小確幸。" },
+                { id: "hope", label: "Hope", patterns: ["Tomorrow, I hope I can...", "Looking forward to..."], words: ["fresh start", "anticipate"], tip: "明日期許。" }
+            ]}
+        };
+
+        // --- 全域狀態 ---
+        let state = {
+            view: 'home', // home, topic, editor, finished
+            selectedMode: null,
+            selectedTopic: null,
+            currentStep: 0,
+            answers: {},
+            isAiLoading: false,
+            aiFeedback: null,
+            aiError: null
+        };
+
+        // --- 核心組件與渲染函數 ---
+        const app = document.getElementById('app');
+
+        function render() {
+            app.innerHTML = '';
+            if (state.view === 'home') renderHome();
+            else if (state.view === 'topic') renderTopicSelect();
+            else if (state.view === 'editor') renderEditor();
+            else if (state.view === 'finished') renderFinished();
+            lucide.createIcons();
+            updateBodyTheme();
+        }
+
+        function updateBodyTheme() {
+            const template = WRITING_TEMPLATES[state.selectedMode];
+            document.body.className = `min-h-screen transition-all duration-700 bg-pattern text-slate-900 font-sans p-4 md:p-8 ${state.selectedMode ? `bg-${template.theme}-50` : 'bg-slate-50'}`;
+        }
+
+        function renderHome() {
+            app.innerHTML = `
+                <header class="mb-12 text-center animate-fade-in">
+                    <h1 class="text-4xl md:text-5xl font-black text-slate-800 flex items-center justify-center gap-3 italic tracking-tighter uppercase">
+                        <i data-lucide="sparkles" class="text-blue-600"></i> Writing Workshop
+                    </h1>
+                    <p class="text-slate-400 mt-2 font-black uppercase tracking-[0.3em] text-[10px]">AI-Powered Scaffolding Practice</p>
+                </header>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+                    ${Object.entries(WRITING_TEMPLATES).map(([key, t]) => `
+                        <button onclick="selectMode('${key}')" class="group p-8 bg-white rounded-[2.5rem] shadow-xl border-2 border-transparent hover:border-blue-400 transition-all text-left transform hover:-translate-y-2">
+                            <div class="w-14 h-14 bg-${t.theme}-50 text-${t.theme}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <i data-lucide="${t.icon}"></i>
+                            </div>
+                            <h3 class="text-2xl font-black text-slate-800 tracking-tight">${t.title}</h3>
+                            <p class="text-[10px] text-slate-400 font-black tracking-widest mb-3 uppercase">${t.subtitle}</p>
+                            <p class="text-xs text-slate-500 leading-relaxed">依照五大步驟建構段落，支援 AI 即時修正建議。</p>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderTopicSelect() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            app.innerHTML = `
+                <div class="max-w-5xl mx-auto animate-fade-in">
+                    <h2 class="text-4xl font-black text-slate-800 text-center mb-12 tracking-tight">請選擇一個練習議題：</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        ${t.topics.map(topic => `
+                            <button onclick="selectTopic('${topic.id}')" class="bg-white p-10 rounded-[2.5rem] shadow-xl border-2 border-transparent hover:border-indigo-400 transition-all text-left group flex flex-col h-full transform hover:-translate-y-1">
+                                <h3 class="text-2xl font-black text-slate-800 mb-4 group-hover:text-indigo-600">${topic.title}</h3>
+                                <p class="text-slate-500 mb-8 leading-relaxed flex-grow font-medium">${topic.desc}</p>
+                                <div class="space-y-3 mt-auto">
+                                    <div class="text-[10px] font-black bg-emerald-50 text-emerald-600 px-3 py-2 rounded-xl border border-emerald-100 flex items-center gap-2">PRO: ${topic.pro}</div>
+                                    <div class="text-[10px] font-black bg-rose-50 text-rose-600 px-3 py-2 rounded-xl border border-rose-100 flex items-center gap-2">CON: ${topic.con}</div>
+                                </div>
+                            </button>
+                        `).join('')}
+                    </div>
+                    <button onclick="goHome()" class="mt-12 mx-auto flex items-center gap-2 text-slate-400 font-bold hover:text-slate-600 transition-colors">
+                        <i data-lucide="chevron-left"></i> 返回模組選擇
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderEditor() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const step = t.steps[state.currentStep];
+            app.innerHTML = `
+                <div class="flex flex-col lg:flex-row gap-10 items-start animate-fade-in">
+                    <!-- 左側資源欄 -->
+                    <div class="w-full lg:w-[32%] space-y-6 lg:sticky lg:top-8">
+                        <div class="bg-white rounded-[2.5rem] shadow-xl p-8 border border-white">
+                            <div class="flex items-center gap-3 mb-6">
+                               <i data-lucide="${t.icon}" class="text-${t.color}"></i>
+                               <h3 class="font-black text-slate-800 text-sm uppercase tracking-widest">任務情境與參考資料</h3>
+                            </div>
+                            <h4 class="text-xl font-black text-slate-700 mb-4">${state.selectedTopic ? t.topics.find(x => x.id === state.selectedTopic).title : (t.exampleData?.title || "自由寫作練習")}</h4>
+                            ${renderContext(t)}
+                        </div>
+                        <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                           <div class="absolute top-0 left-0 w-1 h-full bg-${t.theme}-500"></div>
+                           <h3 class="text-xs font-black uppercase tracking-[0.2em] text-blue-400 mb-6 flex items-center gap-2"><i data-lucide="lightbulb" size="18"></i> 推薦句型與單字</h3>
+                           <div class="space-y-6">
+                             <div>
+                               <span class="text-[10px] font-black text-white/30 uppercase tracking-widest block mb-3">推薦句型 (Patterns)</span>
+                               <div class="flex flex-wrap gap-2">
+                                  ${step.patterns.map(p => `
+                                    <button onclick="insertPattern('${p}')" class="text-[11px] bg-white/5 hover:bg-white/20 px-3 py-2 rounded-xl border border-white/10 transition-all font-mono italic text-blue-100">${p}</button>
+                                  `).join('')}
+                               </div>
+                             </div>
+                             <div class="pt-4 border-t border-white/10">
+                               <span class="text-[10px] font-black text-white/30 uppercase tracking-widest block mb-3">關鍵單字 (Word Bank)</span>
+                               <div class="flex flex-wrap gap-2">
+                                  ${step.words.map(w => `<span class="text-[10px] font-black text-blue-300 uppercase bg-blue-500/10 px-3 py-1.5 rounded-lg">#${w}</span>`).join('')}
+                               </div>
+                             </div>
+                           </div>
+                        </div>
+                    </div>
+
+                    <!-- 右側編輯器 -->
+                    <div class="flex-1 bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white flex flex-col">
+                        <div class="bg-${t.theme}-600 p-8 text-white flex justify-between items-center">
+                            <button onclick="handleBack()" class="p-3 hover:bg-black/10 rounded-2xl"><i data-lucide="chevron-left"></i></button>
+                            <div class="text-center">
+                                <span class="text-[10px] font-black opacity-70 block uppercase tracking-widest mb-1">${t.subtitle}</span>
+                                <span class="font-black text-2xl tracking-tight">${step.label}</span>
+                            </div>
+                            <div class="bg-white/20 px-5 py-2 rounded-full text-sm font-black">STEP ${state.currentStep + 1} / ${t.steps.length}</div>
+                        </div>
+                        <div class="p-8 md:p-12">
+                            <div class="flex gap-2 mb-10">
+                                ${t.steps.map((_, i) => `<div class="h-2 flex-1 rounded-full ${i <= state.currentStep ? `bg-${t.theme}-600` : 'bg-slate-100'}"></div>`).join('')}
+                            </div>
+                            <textarea id="editor-field" oninput="handleTyping(event)" class="w-full h-48 p-8 bg-slate-50 border-4 border-slate-50 rounded-[2.5rem] focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-2xl font-serif leading-relaxed" placeholder="請在此造句...">${state.answers[step.id] || ''}</textarea>
+                            
+                            <div class="flex justify-between items-center mt-4">
+                               <p class="text-xs text-slate-400 italic">💡 點擊左側句型可直接插入。</p>
+                               <button onclick="getAIFeedback()" id="ai-btn" class="flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-sm bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg active:scale-95 disabled:opacity-50">
+                                  <i data-lucide="zap"></i> AI 修正建議
+                               </button>
+                            </div>
+
+                            <div id="ai-feedback-container"></div>
+
+                            <div class="flex justify-between items-center mt-10 pt-10 border-t border-slate-100">
+                                <button onclick="prevStep()" class="px-8 text-slate-400 font-black uppercase tracking-widest disabled:opacity-20" ${state.currentStep === 0 ? 'disabled' : ''}>Back</button>
+                                <button onclick="nextStep()" class="bg-${t.theme}-600 text-white px-14 py-5 rounded-3xl font-black text-xl shadow-2xl active:scale-95">
+                                    ${state.currentStep === t.steps.length - 1 ? "完成草稿" : "下一步驟"} <i data-lucide="chevron-right" class="inline"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900 p-10 text-white/90">
+                            <div class="flex items-center gap-3 mb-4 opacity-40">
+                                <div class="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.4em]">Draft Live Preview</span>
+                            </div>
+                            <p class="text-xl font-serif italic opacity-80 leading-loose">${Object.values(state.answers).join(' ') || '你的練習句子將顯示於此...'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('editor-field').focus();
+        }
+
+        function renderFinished() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const fullText = t.steps.map(s => state.answers[s.id] || '').join(' ');
+            app.innerHTML = `
+                <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl p-10 md:p-14 animate-fade-in text-center">
+                    <div class="mb-10">
+                        <i data-lucide="trophy" class="mx-auto text-yellow-500 mb-6" size="64"></i>
+                        <h2 class="text-4xl font-black text-slate-800">Mission Completed!</h2>
+                        <p class="text-slate-400 mt-2 font-bold uppercase tracking-widest text-xs italic">這是你親手打造的高品質連貫段落：</p>
+                    </div>
+                    <div class="p-10 rounded-[2.5rem] border-4 border-${t.theme}-100 bg-${t.theme}-50 mb-10 text-2xl text-slate-700 font-serif italic leading-[2] serif text-left">
+                        ${fullText}
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <button onclick="copyResult('${fullText}')" class="flex-[2] bg-${t.theme}-600 text-white py-6 rounded-3xl font-black text-xl flex items-center justify-center gap-3">
+                            <i data-lucide="copy"></i> 複製最終段落
+                        </button>
+                        <button onclick="restart()" class="flex-1 bg-slate-100 text-slate-500 py-6 rounded-3xl font-black text-xl">回首頁</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderContext(t) {
+            if (state.selectedTopic) {
+                const topic = t.topics.find(x => x.id === state.selectedTopic);
+                return `<p class="text-sm text-slate-600 leading-relaxed font-medium bg-indigo-50 p-4 rounded-xl">${topic.desc}</p>`;
+            }
+            if (t.exampleData?.type === 'chart') {
+                return `
+                    <div class="space-y-4">
+                        ${t.exampleData.items.map(item => `
+                            <div class="space-y-1 text-[10px] font-bold">
+                                <div class="flex justify-between"><span>${item.label}</span><span>${item.value}%</span></div>
+                                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${item.color}" style="width: ${item.value}%"></div></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            return `<p class="text-sm italic text-slate-500 bg-slate-50 p-4 rounded-xl">"${t.exampleData?.context || '自由練習。'}"</p>`;
+        }
+
+        // --- 互動邏輯 ---
+        function selectMode(key) {
+            state.selectedMode = key;
+            state.answers = {};
+            state.currentStep = 0;
+            state.view = WRITING_TEMPLATES[key].hasTopics ? 'topic' : 'editor';
+            render();
+        }
+
+        function selectTopic(tid) {
+            state.selectedTopic = tid;
+            state.view = 'editor';
+            render();
+        }
+
+        function goHome() {
+            state.selectedMode = null;
+            state.selectedTopic = null;
+            state.view = 'home';
+            render();
+        }
+
+        function handleBack() {
+            if (WRITING_TEMPLATES[state.selectedMode].hasTopics && state.selectedTopic) {
+                state.selectedTopic = null;
+                state.view = 'topic';
+            } else {
+                state.selectedMode = null;
+                state.view = 'home';
+            }
+            render();
+        }
+
+        function handleTyping(e) {
+            const sid = WRITING_TEMPLATES[state.selectedMode].steps[state.currentStep].id;
+            state.answers[sid] = e.target.value;
+        }
+
+        function insertPattern(p) {
+            const el = document.getElementById('editor-field');
+            const sid = WRITING_TEMPLATES[state.selectedMode].steps[state.currentStep].id;
+            const text = p.replace('...', ' ');
+            state.answers[sid] = (state.answers[sid] || '') + text;
+            el.value = state.answers[sid];
+            el.focus();
+        }
+
+        function nextStep() {
+            if (state.currentStep < WRITING_TEMPLATES[state.selectedMode].steps.length - 1) {
+                state.currentStep++;
+                state.aiFeedback = null;
+                render();
+            } else {
+                state.view = 'finished';
+                render();
+            }
+        }
+
+        function prevStep() {
+            if (state.currentStep > 0) {
+                state.currentStep--;
+                state.aiFeedback = null;
+                render();
+            }
+        }
+
+        function copyResult(text) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert('段落已複製！');
+        }
+
+        function restart() {
+            state = { ...state, view: 'home', selectedMode: null, selectedTopic: null, currentStep: 0, answers: {} };
+            render();
+        }
+
+        // --- AI API 功能 ---
+        async function getAIFeedback() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const step = t.steps[state.currentStep];
+            const text = state.answers[step.id];
+            if (!text || text.length < 5) return;
+
+            const btn = document.getElementById('ai-btn');
+            const container = document.getElementById('ai-feedback-container');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> AI 分析中...';
+            lucide.createIcons();
+            
+            const apiKey = ""; // 執行環境提供
+            const prompt = `你是一位英文老師。分析學生的練習。
+                類型: ${t.title}, 步驟: ${step.label}。
+                學生句子: "${text}"。
+                回應 JSON: { "isCorrect": bool, "corrected": "修正句", "explanation": "中文解釋", "better": "高級寫法", "tips": ["單字1", "單字2"] }`;
+
+            let retries = 0;
+            const call = async () => {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    const data = await res.json();
+                    const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                    renderAiFeedback(result);
+                } catch (e) {
+                    if (retries < 3) { retries++; setTimeout(call, 1000 * retries); }
+                    else { container.innerHTML = `<p class="mt-4 text-rose-500 text-xs font-bold">AI 服務忙碌中，請稍後再試。</p>`; }
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="zap"></i> AI 智能修正建議';
+                    lucide.createIcons();
+                }
+            };
+            call();
+        }
+
+        function renderAiFeedback(fb) {
+            const container = document.getElementById('ai-feedback-container');
+            container.innerHTML = `
+                <div class="mt-8 p-8 bg-indigo-50 border-2 border-indigo-100 rounded-[2.5rem] animate-fade-in shadow-inner">
+                    <div class="flex items-center gap-2 mb-4 font-black text-indigo-800 text-xs uppercase"><i data-lucide="sparkles"></i> AI 導師分析回饋</div>
+                    ${!fb.isCorrect ? `<div class="mb-4 p-4 bg-rose-50 text-rose-700 rounded-xl border border-rose-100 text-sm italic font-serif">修正：${fb.corrected}</div>` : ''}
+                    <p class="text-sm text-slate-600 mb-6 font-medium">${fb.explanation}</p>
+                    <div class="p-6 bg-white rounded-2xl border-2 border-indigo-200 relative">
+                        <button onclick="applyBetter('${fb.better.replace(/'/g, "\\'")}')" class="absolute top-2 right-2 bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg">採用建議</button>
+                        <span class="text-[10px] font-black text-indigo-300 block mb-1">道地高級表達 (Better Version)</span>
+                        <p class="text-xl font-serif font-black italic text-slate-800 leading-relaxed">${fb.better}</p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function applyBetter(text) {
+            const sid = WRITING_TEMPLATES[state.selectedMode].steps[state.currentStep].id;
+            state.answers[sid] = text;
+            renderEditor();
+        }
+
+        // 初始化
+        render();
+    </script>
 </body>
+</html>
