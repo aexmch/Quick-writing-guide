@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing Workshop - AI 英文寫作樂園</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .serif { font-family: 'Noto Serif TC', serif; }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        .bg-bubbly { background-image: radial-gradient(circle at 2px 2px, rgba(0,0,0,0.05) 1px, transparent 0); background-size: 24px 24px; }
+        .btn-bounce:hover { transform: translateY(-2px) scale(1.02); }
+        .btn-bounce:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-white min-h-screen transition-colors duration-1000 bg-bubbly">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8">
+        <!-- 內容將由 JavaScript 動態注入 -->
+    </div>
+
+    <script>
+        // --- 寫作架構資料庫 (包含 33 個題目與每步驟 3 個雙語例句) ---
+        const WRITING_TEMPLATES = {
+            chart: {
+                title: "圖表分析", subtitle: "Chart Analysis", theme: "cyan", color: "cyan-500",
+                icon: "bar-chart-3", hasTopics: true,
+                topics: [
+                    { id: "time", title: "After School Time", icon: "clock", desc: "分析高中生課後時間分配，討論學業與休閒的平衡。", type: "chart", items: [{label: "Studying", value: 45, color: "bg-cyan-400"}, {label: "Gaming", value: 30, color: "bg-pink-400"}, {label: "Sports", value: 15, color: "bg-yellow-400"}, {label: "Others", value: 10, color: "bg-slate-300"}] },
+                    { id: "stress", title: "Sources of Stress", icon: "frown", desc: "調查顯示青少年壓力的主要來源。", type: "chart", items: [{label: "Academic", value: 55, color: "bg-rose-400"}, {label: "Peer", value: 20, color: "bg-indigo-400"}, {label: "Family", value: 15, color: "bg-orange-400"}, {label: "Future", value: 10, color: "bg-teal-400"}] },
+                    { id: "career", title: "Future Career", icon: "briefcase", desc: "學生畢業後最嚮往的產業分布情況。", type: "chart", items: [{label: "Tech/AI", value: 40, color: "bg-blue-500"}, {label: "Arts", value: 25, color: "bg-purple-400"}, {label: "Business", value: 20, color: "bg-emerald-400"}, {label: "Education", value: 15, color: "bg-amber-400"}] }
+                ],
+                steps: [
+                    { 
+                        id: "hook", label: "Hook 引言", patterns: ["In recent years...", "Nowadays..."], words: ["crucial", "essential"], tip: "吸引讀者注意該數據主題。",
+                        examples: [
+                            { en: "In the era of information, data regarding student habits has become increasingly important.", tw: "在資訊時代，有關學生習慣的數據變得日益重要。" },
+                            { en: "With the rapid development of society, how teenagers spend their time is worth exploring.", tw: "隨著社會的快速發展，青少年如何分配時間值得探討。" },
+                            { en: "Statistics often reveal hidden truths about our daily habits and lifestyle choices.", tw: "統計數據通常會揭示關於我們日常習慣與生活方式選擇的隱藏真相。" }
+                        ]
+                    },
+                    { 
+                        id: "intro", label: "Intro 簡介", patterns: ["The chart illustrates...", "The graph shows..."], words: ["illustrates", "depicts"], tip: "使用引導句型簡介圖表內容。",
+                        examples: [
+                            { en: "The chart illustrates the various ways high school students spend their time after school.", tw: "這張圖表說明了高中生在課後分配時間的各種方式。" },
+                            { en: "As is shown in the graph, the distribution of student activities varies significantly.", tw: "如圖所示，學生各項活動的分布情形有顯著不同。" },
+                            { en: "According to the visual data provided, several key categories define teenagers' lives.", tw: "根據提供的視覺數據，幾個關鍵類別定義了青少年的日常生活。" }
+                        ]
+                    },
+                    { 
+                        id: "trend", label: "Trend 趨勢", patterns: ["Overall, it is clear that...", "What stands out is..."], words: ["dominant", "noteworthy"], tip: "找出比例最大與最小的項目。",
+                        examples: [
+                            { en: "Overall, it is clear that studying accounts for the largest share of student time.", tw: "整體而言，很明顯地「讀書」佔了學生時間的最大份額。" },
+                            { en: "What stands out most is that academic pursuits dominate the daily routine.", tw: "最顯著的一點是，學業追求在日常生活中佔據主導地位。" },
+                            { en: "The most significant trend is the gap between education and exercise.", tw: "最顯著的趨勢是教育活動與體育運動之間的差距。" }
+                        ]
+                    },
+                    { 
+                        id: "details", label: "Details 數據", patterns: ["...accounts for X%", "compared with"], words: ["approximately", "significant"], tip: "比較不同數據之間的差距。",
+                        examples: [
+                            { en: "Specifically, studying takes up 45%, which is much more than sports at only 15%.", tw: "具體來說，讀書佔了 45%，遠高於僅佔 15% 的運動。" },
+                            { en: "Gaming accounts for 30%, followed by sports and other minor activities.", tw: "遊戲佔了 30%，其次是運動和其他次要活動。" },
+                            { en: "Compared with social media usage, physical activities occupy a much smaller percentage.", tw: "與社群媒體使用相比，體育活動所佔的比例要小得多。" }
+                        ]
+                    },
+                    { 
+                        id: "implication", label: "Meaning 啟示", patterns: ["This suggests that...", "The data indicates..."], words: ["implies", "consequently"], tip: "總結數據反映出的意義。",
+                        examples: [
+                            { en: "This suggests that students are under heavy pressure and lack enough rest.", tw: "這顯示學生承受著沉重的壓力，且缺乏足夠的休息。" },
+                            { en: "The data indicates that a more balanced lifestyle should be encouraged.", tw: "數據表明應該鼓勵青少年採取更平衡的生活方式。" },
+                            { en: "Consequently, parents should pay more attention to students' mental health.", tw: "因此，家長應該更加關注學生的心理健康。" }
+                        ]
+                    }
+                ]
+            },
+            letter: {
+                title: "私人書信", subtitle: "Personal Letter", theme: "pink", color: "pink-500",
+                icon: "heart", hasTopics: true,
+                topics: [
+                    { id: "sorry", title: "Apology to a Friend", icon: "heart-handshake", desc: "道歉並回憶美好時光。", type: "text" },
+                    { id: "advice", title: "Advice to a Junior", icon: "graduation-cap", desc: "建議如何平衡社團與課業。", type: "text" },
+                    { id: "thanks", title: "Thank-you Note", icon: "gift", desc: "寫信給影響你最深的老師。", type: "text" }
+                ],
+                steps: [
+                    { id: "greeting", label: "Greeting 問候", patterns: ["Dearest [Name],", "Hey [Name],"], words: ["Dearest", "Warmly"], tip: "使用溫馨的稱呼。", examples: [{ en: "Dearest Jamie,", tw: "親愛的 Jamie，" }, { en: "Hey there, my old friend,", tw: "嗨，我的老朋友，" }, { en: "My dear Jamie,", tw: "我親愛的 Jamie，" }] },
+                    { id: "purpose", label: "Opening 開頭", patterns: ["I've been thinking about...", "I'm writing to clear the air."], words: ["reflecting", "heart"], tip: "坦誠地開啟話題。", examples: [{ en: "I have been thinking a lot about our argument lately, and I feel quite bad.", tw: "我最近一直在想我們吵架的事，我覺得很過意不去。" }, { en: "I am writing this letter because I really want to clear the air between us.", tw: "我寫這封信是因為我真的很想化解我們之間的誤會。" }, { en: "It has been several days since we last talked, and I truly miss our friendship.", tw: "自從我們上次說話已經過了好幾天，我真的很懷念我們的友誼。" }] },
+                    { id: "details", label: "Apology 道歉", patterns: ["I sincerely apologize for...", "I cherish our friendship."], words: ["regret", "cherish"], tip: "真誠道歉並解釋原因。", examples: [{ en: "I sincerely apologize for my impulsive words; I was just under stress.", tw: "我誠摯地為我的衝動言辭道歉，我當時只是壓力太大了。" }, { en: "I cherish our friendship more than anything and regret the misunderstanding.", tw: "我比任何事物都珍視我們的友誼，並對這次誤會感到遺憾。" }, { en: "I didn't mean to hurt you, and I hope you can understand it was a mistake.", tw: "我並不是故意要傷害你，希望你能理解那是一個錯誤。" }] },
+                    { id: "expectation", label: "Hope 期許", patterns: ["I hope we can...", "Let's grab a coffee."], words: ["reconnect", "forgive"], tip: "提出具體的修補建議。", examples: [{ en: "I hope we can move past this and be best friends again like before.", tw: "希望我們能忘掉這件事，像以前一樣再次成為最好的朋友。" }, { en: "Let's grab a coffee this weekend and talk things over in person.", tw: "我們這週末去喝杯咖啡，當面把事情聊開吧。" }, { en: "I really hope you can forgive me and give our friendship another chance.", tw: "我真心希望你能原諒我，再給我們的友誼一次機會。" }] },
+                    { id: "closing", label: "Closing 結尾", patterns: ["Best,", "Yours always,"], words: ["Truly", "Love"], tip: "選擇溫暖的結尾語。", examples: [{ en: "Best wishes,", tw: "致上最好的祝願，" }, { en: "Your friend always,", tw: "你永遠的朋友，" }, { en: "Love,", tw: "愛你的，" }] }
+                ]
+            },
+            opinion: {
+                title: "意見表達", subtitle: "Opinion Writing", theme: "indigo", color: "indigo-500",
+                icon: "message-square", hasTopics: true,
+                topics: [
+                    { id: "ai", title: "AI in Classroom", icon: "cpu", desc: "課堂中使用 AI 工具的看法？", pro: "效率提升", con: "削弱思考" },
+                    { id: "ban", title: "Smartphone Ban", icon: "smartphone-off", desc: "學校應全面禁止手機嗎？", pro: "專注學習", con: "聯絡不便" },
+                    { id: "uniform", title: "School Uniforms", icon: "shirt", desc: "高中生應該繼續穿制服上學嗎？", pro: "節省時間", con: "壓抑風格" }
+                ],
+                steps: [
+                    { id: "hook", label: "Hook 引導", patterns: ["...is a hot topic lately.", "...sparked heated debates."], words: ["controversial", "debate"], tip: "描述議題的重要性。", examples: [{ en: "In recent years, the use of AI tools in education has sparked heated debates.", tw: "近年來，在教育中使用 AI 工具引起了激烈的爭論。" }, { en: "Whether schools should ban smartphones is a hot topic that affects everyone.", tw: "學校是否應禁止手機是一個影響每個人的熱門話題。" }, { en: "The question of school uniforms has been a frequent source of discussion.", tw: "校服問題幾十年來一直是頻繁討論的來源。" }] },
+                    { id: "thesis", label: "Topic 立場", patterns: ["From my perspective,", "I firmly believe that..."], words: ["standpoint", "convinced"], tip: "清楚表達你的核心立場。", examples: [{ en: "From my perspective, I strongly agree that AI can be a learning partner.", tw: "從我的觀點來看，我非常同意 AI 可以成為學習夥伴。" }, { en: "I firmly believe that banning smartphones is beneficial for concentration.", tw: "我堅信禁止手機對學生的專注力是有益的。" }, { en: "In my view, wearing uniforms creates a sense of equality on campus.", tw: "在我看來，穿制服在校園中創造了一種平等感。" }] },
+                    { id: "reason1", label: "Reason 1 理由", patterns: ["Firstly,", "To begin with,"], words: ["primary", "essential"], tip: "給出首要支持理由。", examples: [{ en: "Firstly, AI tools can provide personalized guidance for students.", tw: "首先，AI 工具可以為學生提供個人化的指導。" }, { en: "To begin with, a phone-free environment encourages real-life interaction.", tw: "首先，一個無手機的環境能鼓勵現實生活中的互動。" }, { en: "The primary reason is that uniforms save students a lot of time.", tw: "主要原因是制服為學生節省了大量的時間。" }] },
+                    { id: "reason2", label: "Reason 2 補充", patterns: ["Furthermore,", "In addition,"], words: ["moreover", "important"], tip: "補充另一個支持點。", examples: [{ en: "Furthermore, using technology prepares students for their future careers.", tw: "此外，使用科技能為學生的未來職涯做好準備。" }, { en: "In addition, it prevents online distractions during class hours.", tw: "此外，它能防止上課期間的網路分心。" }, { en: "Moreover, uniforms reduce the pressure of fashion competition.", tw: "再者，制服減輕了青少年之間時尚競爭的壓力。" }] },
+                    { id: "concession", label: "Concession 讓步", patterns: ["Admittedly, ...", "While some argue..."], words: ["nevertheless", "outweigh"], tip: "先承認對方觀點再反饋。", examples: [{ en: "Admittedly, some worry about integrity, but proper guidance can solve this.", tw: "誠然，有些人擔憂誠信問題，但適當的引導可以解決這個問題。" }, { en: "While some argue it limits freedom, the benefits far outweigh the costs.", tw: "雖然有人認為它限制了自由，但其益處遠大於代價。" }, { en: "Nevertheless, personal style can still be expressed in other ways.", tw: "儘管如此，個人風格仍然可以透過其他方式展現。" }] },
+                    { id: "conclusion", label: "Conclusion 總結", patterns: ["In conclusion,", "To sum up,"], words: ["ultimately", "thought"], tip: "重申立場並給予建議。", examples: [{ en: "In conclusion, we should embrace AI as a tool rather than a threat.", tw: "總之，我們應該將 AI 擁抱為工具，而非視為威脅。" }, { en: "To sum up, a balanced policy on smartphones is essential for school life.", tw: "總結來說，平衡的手機政策對校園生活至關重要。" }, { en: "Ultimately, uniforms help maintain a focused learning environment.", tw: "最終，制服有助於維持一個專注的學習環境。" }] }
+                ]
+            },
+            narrative: {
+                title: "敘事寫作", subtitle: "Story Telling", theme: "amber", color: "amber-500",
+                icon: "camera", hasTopics: true,
+                topics: [
+                    { id: "lesson", title: "Unexpected Lesson", icon: "lightbulb", desc: "描述一次意外學到的經驗。", type: "text" },
+                    { id: "courage", title: "Moment of Courage", icon: "shield", desc: "鼓起勇氣幫助他人的瞬間。", type: "text" },
+                    { id: "lost", title: "A Lost Item", icon: "search", desc: "找回珍貴物品的冒險。", type: "text" }
+                ],
+                steps: [
+                    { id: "setting", label: "Setting 背景", patterns: ["It was a sunny day when...", "I had been looking forward to..."], words: ["excited", "anticipation"], tip: "交代時間地點心情。", examples: [{ en: "It was a sunny Saturday morning when I set off for the hike.", tw: "那是一個晴朗的週六早晨，我出發去健行。" }, { en: "I had been looking forward to the school concert for months.", tw: "我期待學校音樂會已經好幾個月了。" }, { en: "Everything started normally until a sudden change in the weather.", tw: "一切開始得很正常，直到天氣突然轉變。" }] },
+                    { id: "conflict", label: "Conflict 事件", patterns: ["Unexpectedly, ...", "Things took a turn..."], words: ["suddenly", "shocked"], tip: "描述意外發生的一刻。", examples: [{ en: "Unexpectedly, our bus broke down in the middle of a remote road.", tw: "出乎意料地，我們的巴士在偏僻的路中央拋錨了。" }, { en: "Things took a turn for the worse when I realized my wallet was gone.", tw: "當我發現錢包不見時，情況急轉直下。" }, { en: "Suddenly, the power went out, and the stage was plunged into darkness.", tw: "突然間停電了，舞台陷入一片黑暗。" }] },
+                    { id: "climax", label: "Climax 高潮", patterns: ["I found myself in a spot.", "At that moment, I realized..."], words: ["desperate", "struggle"], tip: "描述最緊張的轉折。", examples: [{ en: "I found myself in a tough spot, standing alone in the rain.", tw: "我發現自己陷入困境，獨自站在雨中。" }, { en: "At that moment, I realized I had to stay calm to find my way back.", tw: "在那一刻，我意識到我必須保持冷靜才能找到回去的路。" }, { en: "Panic started to rise, but I knew I had to make a quick decision.", tw: "恐慌開始蔓延，但我知道我必須快做決定。" }] },
+                    { id: "resolution", label: "Ending 結局", patterns: ["Eventually, I decided to...", "With the help of..."], words: ["relief", "resolved"], tip: "故事是如何落幕的？", examples: [{ en: "Eventually, a kind stranger offered me a ride back to the station.", tw: "最後一位好心的陌生人載我回到了車站。" }, { en: "With the help of my friends, we managed to find the lost key.", tw: "在朋友的幫助下，我們成功找到了遺失的鑰匙。" }, { en: "To my surprise, the audience cheered even louder after the fix.", tw: "令我驚訝的是，修理好之後觀眾的歡呼聲更大了。" }] },
+                    { id: "theme", label: "Lesson 啟示", patterns: ["Looking back, I learned...", "This experience taught me..."], words: ["valuable", "insight"], tip: "帶給你的成長。", examples: [{ en: "Looking back, I learned that kindness can be found in unexpected places.", tw: "回首往事，我學到了在不經意的地方也能發現善意。" }, { en: "This experience taught me the importance of staying calm under pressure.", tw: "這次經歷教導了我壓力下保持冷靜的重要性。" }, { en: "I realized that sometimes, mistakes lead to the best memories.", tw: "我意識到有時候，錯誤會帶來最美好的回憶。" }] }
+                ]
+            },
+            problem: { title: "解決問題", subtitle: "Problem & Solution", theme: "orange", color: "orange-500", icon: "help-circle", hasTopics: true,
+                topics: [
+                    { id: "plastic", title: "Plastic Waste", icon: "trash-2", desc: "校園內餐具過量問題及對策。", type: "text" },
+                    { id: "addict", title: "Internet Addiction", icon: "monitor-off", desc: "沉迷社群媒體的影響及解決。", type: "text" },
+                    { id: "sleep", title: "Lack of Sleep", icon: "bed", desc: "睡眠不足現狀及改善建議。", type: "text" }
+                ],
+                steps: [
+                    { id: "problem", label: "Problem 問題", patterns: ["One major issue is...", "Recently, ... has become..."], words: ["concerning", "challenge"], tip: "描述具體困難。", examples: [{ en: "One major issue we face today is the excessive use of plastic on campus.", tw: "我們今天面臨的一個重大問題是校園內過度使用塑膠。" }, { en: "Recently, internet addiction has become a growing concern among teens.", tw: "最近，網路成癮已成為青少年中日益嚴重的擔憂。" }, { en: "It is concerning that many students suffer from severe lack of sleep.", tw: "令人擔憂的是，許多學生患有嚴重的睡眠不足。" }] },
+                    { id: "causes", label: "Causes 原因", patterns: ["The main reason is...", "This problem arises from..."], words: ["root cause", "factor"], tip: "分析問題起因。", examples: [{ en: "The main reason behind this is the convenience of disposable products.", tw: "背後的主要原因是免洗產品的便利性。" }, { en: "This problem arises from the need for social validation on digital apps.", tw: "這個問題源於在數位應用程式上尋求社交認可的需求。" }, { en: "A key contributing factor is the heavy workload and late-night studying.", tw: "一個關鍵的促成因素是沉重的課業負擔和熬夜讀書。" }] },
+                    { id: "sol1", label: "Sol 1 對策一", patterns: ["To address this, we could...", "The first step is to..."], words: ["effective", "measure"], tip: "第一個解決方案。", examples: [{ en: "To address this, schools could implement a strict policy on plastic bags.", tw: "為了解決這個問題，學校可以對塑膠袋實施嚴格的政策。" }, { en: "The first step is to set a daily time limit for using mobile applications.", tw: "第一步是設定每日使用行動應用程式的時間限制。" }, { en: "One effective measure is to adjust the school starting time to later.", tw: "一個有效的措施是將上學時間調晚。" }] },
+                    { id: "sol2", label: "Sol 2 對策二", patterns: ["In addition, ...", "Another solution is..."], words: ["furthermore", "alternative"], tip: "補充建議。", examples: [{ en: "In addition, providing reusable utensils in the cafeteria is practical.", tw: "此外，在餐廳提供可重複使用的餐具是很實用的做法。" }, { en: "Furthermore, outdoor activities should be organized to distract students.", tw: "再者，應該組織戶外活動來轉移學生的注意力。" }, { en: "Another potential solution is to provide time-management workshops.", tw: "另一個潛在的解決方案是提供時間管理工作坊。" }] },
+                    { id: "outlook", label: "Outlook 展望", patterns: ["By doing so, we can...", "I believe with efforts..."], words: ["promising", "sustainable"], tip: "未來展望。", examples: [{ en: "By doing so, we can build a more sustainable and eco-friendly school.", tw: "透過這樣做，我們可以建立一個更永續且環保的校園。" }, { en: "I believe that with these efforts, students can regain control.", tw: "我相信透過這些努力，學生可以重新掌控自己的生活。" }, { en: "Ultimately, these changes will lead to improved health for all.", tw: "最終，這些改變將會改善所有人的健康。" }] }
+                ]
+            },
+            compare: { title: "對比比較", subtitle: "Compare & Contrast", theme: "purple", color: "purple-500", icon: "list-checks", hasTopics: true,
+                topics: [
+                    { id: "city", title: "City vs. Country", icon: "building-2", desc: "比較都市便利與鄉村寧靜。", type: "text" },
+                    { id: "elearn", title: "Paper vs. Digital", icon: "book-open", desc: "紙本與電子書學習對比。", type: "text" },
+                    { id: "movie", title: "Theater vs. Home", icon: "clapperboard", desc: "電影院與在家看劇差別。", type: "text" }
+                ],
+                steps: [
+                    { id: "intro", label: "Intro 簡介", patterns: ["While A and B share...", "Comparing A and B reveals..."], words: ["comparison", "distinct"], tip: "對象簡介。", examples: [{ en: "While city life and country life share some similarities, they differ greatly.", tw: "雖然都市生活和鄉村生活有一些相似之處，但它們在許多方面大不相同。" }, { en: "Comparing paper books and digital tools reveals significant differences.", tw: "比較紙本圖書和數位工具揭示了學習效率上的顯著差異。" }, { en: "Choosing between watching movies in a theater and at home is common.", tw: "在電影院觀影還是留在家中看電影是一個常見的選擇兩難。" }] },
+                    { id: "sim", label: "Similarities 共同", patterns: ["Both A and B are...", "Similarly, both of them..."], words: ["likewise", "common"], tip: "兩者共同點。", examples: [{ en: "Both city and country living provide unique opportunities for growth.", tw: "都市和鄉村生活都為個人成長提供了獨特的機會。" }, { en: "Similarly, both paper and digital tools aim to provide knowledge.", tw: "同樣地，紙本和數位工具都旨在向讀者提供知識。" }, { en: "Likewise, both movie experiences offer high-quality entertainment.", tw: "同樣地，這兩種觀影體驗都為觀眾提供了高品質的娛樂。" }] },
+                    { id: "diff", label: "Differences 相異", patterns: ["On the contrary, ...", "Unlike A, B tends to..."], words: ["whereas", "contrast"], tip: "兩者相異點。", examples: [{ en: "On the contrary, the city is bustling whereas the country is peaceful.", tw: "相反地，城市繁忙喧囂，而鄉村則寧靜平和。" }, { en: "Unlike paper books, digital tools allow for instant searching and portability.", tw: "與紙本圖書不同，數位工具允許即時搜尋且易於攜帶。" }, { en: "A theater offers immersion, while home streaming provides convenience.", tw: "電影院提供沈浸感，而居家串流則提供便利性。" }] },
+                    { id: "pref", label: "Preference 偏好", patterns: ["As for me, I prefer A because...", "If I had to choose..."], words: ["choice", "favor"], tip: "個人偏好與理由。", examples: [{ en: "As for me, I prefer city life because of the access to modern facilities.", tw: "對我來說，我更喜歡城市生活，因為可以方便使用現代設施。" }, { en: "If I had to choose, I would pick paper books for a traditional feel.", tw: "如果必須選擇，我會選擇紙本圖書，因為有一種傳統的閱讀感。" }, { en: "Personally, I favor home streaming because I can watch anytime.", tw: "就個人而言，我偏好居家串流，因為我可以隨時觀看。" }] },
+                    { id: "sum", label: "Final Thought 總結", patterns: ["In short, both have pros and cons.", "Choosing between them..."], words: ["balanced", "perspective"], tip: "最終心得總結。", examples: [{ en: "In short, both options have their own pros and cons for different people.", tw: "簡而言之，這兩個選項對不同的人來說各有優缺點。" }, { en: "Choosing between them depends on one's personal lifestyle.", tw: "在兩者之間做選擇取決於個人的生活方式和優先順序。" }, { en: "Ultimately, both experiences contribute to a more diverse life.", tw: "最終，這兩種體驗都有助於過上更多元有趣的生活。" }] }
+                ]
+            }
+        };
+
+        // --- 全域狀態 ---
+        let state = {
+            view: 'home',
+            selectedMode: null,
+            selectedTopic: null,
+            currentStep: 0,
+            answers: {},
+            isAiLoading: false,
+            aiFeedback: null
+        };
+
+        // --- 核心渲染函數 ---
+        const app = document.getElementById('app');
+
+        function render() {
+            app.innerHTML = '';
+            if (state.view === 'home') renderHome();
+            else if (state.view === 'topic') renderTopicSelect();
+            else if (state.view === 'editor') renderEditor();
+            else if (state.view === 'finished') renderFinished();
+            lucide.createIcons();
+            updateBodyTheme();
+        }
+
+        function updateBodyTheme() {
+            const template = WRITING_TEMPLATES[state.selectedMode];
+            if (state.selectedMode) {
+                const colorMap = {
+                    cyan: "#ecfeff", pink: "#fdf2f8", indigo: "#eef2ff",
+                    amber: "#fffbeb", orange: "#fff7ed", purple: "#faf5ff"
+                };
+                document.body.style.backgroundColor = colorMap[template.theme];
+            } else {
+                document.body.style.backgroundColor = "#ffffff";
+            }
+        }
+
+        function renderHome() {
+            app.innerHTML = `
+                <header class="mb-16 text-center animate-pop">
+                    <div class="inline-block p-4 bg-yellow-100 rounded-[2rem] mb-6 shadow-sm">
+                        <i data-lucide="sparkles" class="text-yellow-500 w-10 h-10"></i>
+                    </div>
+                    <h1 class="text-5xl md:text-6xl font-black text-slate-800 tracking-tight mb-4">Writing Park</h1>
+                    <p class="text-slate-400 font-black uppercase tracking-[0.4em] text-xs">AI 英文寫作互動樂園</p>
+                </header>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-pop">
+                    ${Object.entries(WRITING_TEMPLATES).map(([key, t]) => `
+                        <button onclick="selectMode('${key}')" class="group p-10 bg-white rounded-[3.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-4 border-transparent hover:border-${t.theme}-300 transition-all text-left transform btn-bounce">
+                            <div class="w-16 h-16 bg-${t.theme}-100 text-${t.theme}-500 rounded-[1.5rem] flex items-center justify-center mb-8 group-hover:rotate-12 transition-transform">
+                                <i data-lucide="${t.icon}" size="32"></i>
+                            </div>
+                            <h3 class="text-3xl font-black text-slate-800 mb-2">${t.title}</h3>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-4">${t.subtitle}</p>
+                            <div class="flex items-center text-${t.theme}-500 font-black text-sm uppercase tracking-tighter">
+                                Let's Play! <i data-lucide="chevron-right" size="16" class="ml-1"></i>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderTopicSelect() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            app.innerHTML = `
+                <div class="max-w-6xl mx-auto animate-pop">
+                    <div class="text-center mb-16">
+                        <span class="bg-white/50 px-6 py-2 rounded-full text-xs font-black text-${t.theme}-500 uppercase tracking-widest border border-${t.theme}-100">Step 1: Choose a path</span>
+                        <h2 class="text-5xl font-black text-slate-800 mt-6 tracking-tight">選擇一個練習主題</h2>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        ${t.topics.map(topic => `
+                            <button onclick="selectTopic('${topic.id}')" class="bg-white p-10 rounded-[3rem] shadow-xl border-4 border-transparent hover:border-${t.theme}-300 transition-all text-left group flex flex-col h-full btn-bounce">
+                                <div class="w-14 h-14 bg-${t.theme}-50 text-${t.theme}-400 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                                    <i data-lucide="${topic.icon || 'star'}"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-800 mb-4 group-hover:text-${t.theme}-500 transition-colors">${topic.title}</h3>
+                                <p class="text-slate-400 leading-relaxed flex-grow font-bold text-sm mb-8">${topic.desc}</p>
+                                ${topic.pro ? `
+                                    <div class="space-y-2 mt-auto">
+                                        <div class="text-[10px] font-black bg-emerald-50 text-emerald-500 px-4 py-2 rounded-2xl border border-emerald-100 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="smile" size="14"></i> PRO: ${topic.pro}</div>
+                                        <div class="text-[10px] font-black bg-rose-50 text-rose-400 px-4 py-2 rounded-2xl border border-rose-100 flex items-center gap-2 uppercase tracking-widest"><i data-lucide="frown" size="14"></i> CON: ${topic.con}</div>
+                                    </div>
+                                ` : ''}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <button onclick="goHome()" class="mt-16 mx-auto flex items-center gap-2 text-slate-300 font-black uppercase tracking-widest text-xs hover:text-slate-500 transition-colors group">
+                        <i data-lucide="chevron-left" class="group-hover:-translate-x-1 transition-transform"></i> Back to the Park
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderEditor() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const step = t.steps[state.currentStep];
+            app.innerHTML = `
+                <div class="flex flex-col lg:flex-row gap-10 items-start animate-pop">
+                    <div class="w-full lg:w-[35%] space-y-6 lg:sticky lg:top-8">
+                        <!-- Task Card -->
+                        <div class="bg-white rounded-[3rem] shadow-xl p-10 border-4 border-white">
+                            <div class="flex items-center gap-4 mb-8">
+                               <div class="p-3 bg-${t.theme}-100 text-${t.theme}-500 rounded-[1.2rem] shadow-inner">
+                                  <i data-lucide="${t.icon}"></i>
+                               </div>
+                               <h3 class="font-black text-slate-800 text-sm uppercase tracking-widest">任務地圖</h3>
+                            </div>
+                            <h4 class="text-2xl font-black text-slate-700 mb-6 leading-tight">${t.topics.find(x => x.id === state.selectedTopic).title}</h4>
+                            ${renderContext(t)}
+                        </div>
+
+                        <!-- Phrase Bank -->
+                        <div class="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+                           <div class="absolute top-0 right-0 w-32 h-32 bg-${t.theme}-500/20 rounded-full -mr-16 -mt-16"></div>
+                           <h3 class="text-xs font-black uppercase tracking-[0.3em] text-${t.theme}-400 mb-8 flex items-center gap-2"><i data-lucide="zap" size="18"></i> 魔法句型</h3>
+                           <div class="space-y-8">
+                             <div>
+                               <span class="text-[10px] font-black text-white/30 uppercase tracking-widest block mb-4">咒語句型 (Patterns)</span>
+                               <div class="flex flex-wrap gap-2">
+                                  ${step.patterns.map(p => `
+                                    <button onclick="insertText('${p.replace('...', ' ')}')" class="text-[11px] bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-2xl border border-white/5 transition-all font-mono italic text-blue-100 btn-bounce">${p}</button>
+                                  `).join('')}
+                               </div>
+                             </div>
+                             <div class="pt-6 border-t border-white/10">
+                               <span class="text-[10px] font-black text-white/30 uppercase tracking-widest block mb-4">魔法單字 (Words)</span>
+                               <div class="flex flex-wrap gap-2">
+                                  ${step.words.map(w => `<span class="text-[10px] font-black text-${t.theme}-300 uppercase bg-${t.theme}-50/20 px-4 py-2 rounded-xl border border-white/5">#${w}</span>`).join('')}
+                               </div>
+                             </div>
+                           </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-white rounded-[4rem] shadow-2xl overflow-hidden border-8 border-white flex flex-col">
+                        <!-- Step Header -->
+                        <div class="bg-${t.theme}-400 p-10 text-white flex justify-between items-center relative">
+                            <button onclick="handleBack()" class="p-4 hover:bg-black/10 rounded-3xl transition-colors"><i data-lucide="chevron-left" size="28"></i></button>
+                            <div class="text-center">
+                                <span class="text-[10px] font-black opacity-60 block uppercase tracking-[0.4em] mb-2">${t.subtitle}</span>
+                                <span class="font-black text-3xl tracking-tight">${step.label}</span>
+                            </div>
+                            <div class="bg-white/30 px-6 py-2 rounded-full text-sm font-black shadow-inner">#${state.currentStep + 1}</div>
+                        </div>
+
+                        <div class="p-10 md:p-14">
+                            <!-- Model Examples -->
+                            <div class="mb-12">
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div class="w-2 h-6 bg-${t.theme}-400 rounded-full"></div>
+                                    <span class="font-black text-slate-800 text-sm uppercase tracking-widest">看看高分範例 (帶翻譯)：</span>
+                                </div>
+                                <div class="grid grid-cols-1 gap-4">
+                                    ${(step.examples || []).map((ex, i) => `
+                                        <button onclick="insertText('${ex.en.replace(/'/g, "\\'")}')" class="text-left p-6 rounded-[2rem] bg-slate-50 border-4 border-transparent hover:border-${t.theme}-200 hover:bg-white transition-all group btn-bounce">
+                                            <p class="text-slate-700 font-serif italic text-lg leading-relaxed mb-1">${ex.en}</p>
+                                            <p class="text-slate-400 text-sm font-bold">${ex.tw}</p>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <textarea id="editor-field" oninput="handleTyping(event)" class="w-full h-56 p-10 bg-slate-50 border-4 border-slate-50 rounded-[3rem] focus:bg-white focus:border-${t.theme}-300 focus:outline-none transition-all text-2xl font-serif leading-relaxed shadow-inner mb-8" placeholder="參考範例寫下你的句子...">${state.answers[step.id] || ''}</textarea>
+                            
+                            <div class="flex justify-between items-center">
+                               <p class="text-xs text-slate-300 font-bold italic tracking-wide">💡 點擊範例直接引用（僅引用英文）</p>
+                               <button onclick="getAIFeedback()" id="ai-btn" class="flex items-center gap-3 px-10 py-5 rounded-[2rem] font-black text-sm bg-gradient-to-r from-pink-400 to-purple-500 text-white shadow-xl btn-bounce">
+                                  <i data-lucide="zap"></i> AI 魔法修正
+                               </button>
+                            </div>
+
+                            <div id="ai-feedback-container"></div>
+
+                            <div class="flex justify-between items-center mt-16 pt-12 border-t-4 border-slate-50">
+                                <button onclick="prevStep()" class="px-10 text-slate-300 font-black uppercase tracking-widest text-xs hover:text-slate-500 transition-colors" ${state.currentStep === 0 ? 'disabled' : ''}>Prev</button>
+                                <button onclick="nextStep()" class="bg-${t.theme}-400 text-white px-16 py-6 rounded-[2.5rem] font-black text-xl shadow-2xl btn-bounce">
+                                    ${state.currentStep === t.steps.length - 1 ? "完成任務" : "下一步驟"} <i data-lucide="arrow-right" class="inline ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Live Progress -->
+                        <div class="bg-slate-50 p-12 text-slate-400 shadow-inner">
+                            <div class="flex items-center gap-3 mb-6 opacity-50">
+                                <div class="w-2 h-2 rounded-full bg-${t.theme}-400 animate-pulse"></div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.4em]">我的段落半成品</span>
+                            </div>
+                            <p class="text-2xl font-serif italic leading-loose">${Object.values(state.answers).filter(x => x).join(' ') || '還沒有寫下內容喔...'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('editor-field').focus();
+        }
+
+        function renderFinished() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const fullText = t.steps.map(s => state.answers[s.id] || '').filter(x => x).join(' ');
+            app.innerHTML = `
+                <div class="max-w-4xl mx-auto bg-white rounded-[4rem] shadow-2xl p-14 animate-pop text-center relative overflow-hidden border-8 border-white flex flex-col items-center">
+                    <div class="absolute top-0 right-0 w-80 h-80 bg-${t.theme}-50 rounded-full -mr-40 -mt-40 opacity-50"></div>
+                    <div class="mb-12 relative z-10 w-full">
+                        <div class="w-24 h-24 bg-yellow-100 text-yellow-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
+                            <i data-lucide="trophy" size="48"></i>
+                        </div>
+                        <h2 class="text-6xl font-black text-slate-800 tracking-tighter uppercase mb-4">Amazing!</h2>
+                        <p class="text-slate-400 font-black uppercase tracking-[0.4em] text-xs italic">你完成了一段高品質的英文創作：</p>
+                    </div>
+                    <div class="p-12 rounded-[3rem] border-4 border-${t.theme}-100 bg-${t.theme}-50 mb-12 text-3xl text-slate-700 font-serif italic leading-[2.4] serif text-left shadow-inner relative z-10 w-full">
+                        ${fullText}
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-6 relative z-10 w-full">
+                        <button onclick="copyResult('${fullText.replace(/'/g, "\\'")}')" class="flex-[2] bg-${t.theme}-400 text-white py-8 rounded-[2.5rem] font-black text-2xl flex items-center justify-center gap-4 shadow-2xl btn-bounce">
+                            <i data-lucide="copy" size="28"></i> 複製作品
+                        </button>
+                        <button onclick="restart()" class="flex-1 bg-slate-100 text-slate-400 py-8 rounded-[2.5rem] font-black text-2xl hover:bg-slate-200 transition-colors">回首頁</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderContext(t) {
+            const topic = t.topics.find(x => x.id === state.selectedTopic);
+            if (topic.type === 'chart') {
+                return `
+                    <div class="space-y-6">
+                        <p class="text-xs text-slate-400 font-bold tracking-wide mb-2 uppercase">${topic.desc}</p>
+                        ${topic.items.map(item => `
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-xs font-black"><span>${item.label}</span><span class="text-${t.theme}-500">${item.value}%</span></div>
+                                <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-white">
+                                    <div class="h-full ${item.color} rounded-full transition-all duration-1000 shadow-sm" style="width: ${item.value}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            return `<p class="text-lg italic text-slate-500 bg-slate-50 p-8 rounded-[2rem] font-bold leading-relaxed border-4 border-white shadow-inner">"${topic.desc}"</p>`;
+        }
+
+        // --- 互動邏輯函數 ---
+        function selectMode(key) {
+            state.selectedMode = key;
+            state.answers = {};
+            state.currentStep = 0;
+            state.view = 'topic';
+            render();
+        }
+
+        function selectTopic(tid) {
+            state.selectedTopic = tid;
+            state.view = 'editor';
+            render();
+        }
+
+        function goHome() {
+            state.selectedMode = null;
+            state.selectedTopic = null;
+            state.view = 'home';
+            render();
+        }
+
+        function handleBack() {
+            state.selectedTopic = null;
+            state.view = 'topic';
+            render();
+        }
+
+        function handleTyping(e) {
+            const sid = WRITING_TEMPLATES[state.selectedMode].steps[state.currentStep].id;
+            state.answers[sid] = e.target.value;
+        }
+
+        function insertText(text) {
+            const el = document.getElementById('editor-field');
+            const sid = WRITING_TEMPLATES[state.selectedMode].steps[state.currentStep].id;
+            state.answers[sid] = text;
+            el.value = text;
+            el.focus();
+        }
+
+        function nextStep() {
+            if (state.currentStep < WRITING_TEMPLATES[state.selectedMode].steps.length - 1) {
+                state.currentStep++;
+                state.aiFeedback = null;
+                render();
+            } else {
+                state.view = 'finished';
+                render();
+            }
+        }
+
+        function prevStep() {
+            if (state.currentStep > 0) {
+                state.currentStep--;
+                state.aiFeedback = null;
+                render();
+            }
+        }
+
+        function copyResult(text) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            const btn = event.currentTarget;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="check-circle"></i> 段落已帶走！';
+            lucide.createIcons();
+            setTimeout(() => { btn.innerHTML = originalHTML; lucide.createIcons(); }, 2000);
+        }
+
+        function restart() {
+            state = { view: 'home', selectedMode: null, selectedTopic: null, currentStep: 0, answers: {}, isAiLoading: false, aiFeedback: null };
+            render();
+        }
+
+        async function getAIFeedback() {
+            const t = WRITING_TEMPLATES[state.selectedMode];
+            const topic = t.topics.find(x => x.id === state.selectedTopic);
+            const step = t.steps[state.currentStep];
+            const text = state.answers[step.id];
+            if (!text || text.trim().length < 5) return;
+
+            const btn = document.getElementById('ai-btn');
+            const container = document.getElementById('ai-feedback-container');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> 正在唸咒...';
+            lucide.createIcons();
+            
+            const apiKey = ""; 
+            const prompt = `你是一位活潑的英文老師。分析學生的練習。
+                文體類型: ${t.title}, 主題任務: ${topic.title}, 寫作步驟: ${step.label}。
+                學生句子: "${text}"。
+                回應 JSON: { "isCorrect": bool, "corrected": "修正句", "explanation": "用活潑口吻解釋為什麼", "better": "道地的高級寫法", "tips": ["單字1", "單字2"] }`;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+                const data = await res.json();
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                renderAiFeedback(result);
+            } catch (e) {
+                container.innerHTML = `<div class="mt-6 p-6 bg-yellow-50 text-yellow-600 text-sm font-black rounded-[2rem] border-4 border-white shadow-inner">哎呀！魔法瓶暫時沒水了，請先檢查文法繼續前進吧！</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="zap"></i> AI 魔法修正';
+                lucide.createIcons();
+            }
+        }
+
+        function renderAiFeedback(fb) {
+            const container = document.getElementById('ai-feedback-container');
+            container.innerHTML = `
+                <div class="mt-10 p-10 bg-indigo-50 border-8 border-white rounded-[3.5rem] animate-pop shadow-xl relative overflow-hidden">
+                    <div class="flex items-center gap-3 mb-8 font-black text-indigo-500 text-xs uppercase tracking-[0.3em] relative z-10"><i data-lucide="sparkles" size="20"></i> AI 魔法點評</div>
+                    ${!fb.isCorrect ? `<div class="mb-8 p-6 bg-white text-rose-400 rounded-[2rem] border-4 border-rose-50 text-lg italic font-serif shadow-sm relative z-10 animate-pop">這樣寫更棒：${fb.corrected}</div>` : ''}
+                    <p class="text-base text-slate-500 mb-10 font-bold leading-relaxed relative z-10">${fb.explanation}</p>
+                    <div class="p-10 bg-white rounded-[2.5rem] border-4 border-indigo-100 relative shadow-inner">
+                        <button onclick="insertText('${fb.better.replace(/'/g, "\\'")}')" class="absolute -top-6 -right-6 bg-indigo-500 text-white px-8 py-4 rounded-[2rem] text-sm font-black shadow-2xl hover:scale-105 active:scale-95 transition-all">套用咒語 ✨</button>
+                        <span class="text-[10px] font-black text-indigo-200 block mb-4 uppercase tracking-[0.2em]">道地魔法表達 (Model)</span>
+                        <p class="text-2xl font-serif font-black italic text-slate-800 leading-relaxed tracking-tight">"${fb.better}"</p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // 頁面初始化
+        render();
+    </script>
+</body>
+</html>
